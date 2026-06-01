@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'lift_controller_node = liftcommunicatie.LiftControllerNode:main',
+            'lift_controller_node = liftcommunicatie.LiftControllerServer:main',
+            'lift_action_client = liftcommunicatie.LiftActionClient:main'
         ],
     },
 )
