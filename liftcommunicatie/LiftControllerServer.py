@@ -2,11 +2,9 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
-from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 
-from .Communication.Protocols import TestLiftProtocol
-from .Communication.Protocols import ICommunicationProtocol
+from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
 
 from building_management_interfaces.action import LiftControl
 

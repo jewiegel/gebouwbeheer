@@ -1,4 +1,4 @@
-from gebouwbeheer.liftcommunicatie.Communication.Protocols import ICommunicationProtocol
+from .ICommunicationProtocol import ICommunicationProtocol
 
 
 class TestLiftProtocol(ICommunicationProtocol):
@@ -6,15 +6,15 @@ class TestLiftProtocol(ICommunicationProtocol):
         self.a = 1
 
     
-    def connect(address: str):
+    def connect(self, address: str):
         print("bruh")
 
-    def setup():
+    def setup(self):
         print("Zowkski")
 
-    def disconnect():
+    def disconnect(self):
         pass
 
-    def send_message(message):
+    def send_message(self, message):
         pass
     

@@ -3,17 +3,17 @@ from abc import ABC, abstractmethod
 class ICommunicationProtocol(ABC):
 
     @abstractmethod
-    def connect(address: str):
+    def connect(self, address: str):
         pass
 
     @abstractmethod
-    def disconnect():
+    def disconnect(self):
         pass
 
     @abstractmethod
-    def setup():
+    def setup(self):
         pass
 
     @abstractmethod
-    def send_message(message):
+    def send_message(self, message):
         pass
