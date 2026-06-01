@@ -5,6 +5,9 @@ from rclpy.action.server import ServerGoalHandle
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.callback_groups import ReentrantCallbackGroup
 
+from .Communication.Protocols import TestLiftProtocol
+from .Communication.Protocols import ICommunicationProtocol
+
 from building_management_interfaces.action import LiftControl
 
 class LiftControllerServer(Node):
@@ -37,6 +40,10 @@ class LiftControllerServer(Node):
 
    
 def main(args=None):
+    lift_protocol = TestLiftProtocol()
+    lift_protocol.setup()
+
+
     rclpy.init(args=args)
     lift_controller_node = LiftControllerServer()
     rclpy.spin(lift_controller_node)
