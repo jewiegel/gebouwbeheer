@@ -7,6 +7,11 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
 from .Communication.Protocols.ICommunicationProtocol import ICommunicationProtocol
 
+from .States.WaitingForDoorsState import WaitingForDoorsState
+from .States.IRobotLiftState import IRobotLiftStateState
+from .States.InElevatorState import InElevatorState
+from .States.ExitingElevatorState import ExitingElevatorState
+
 from building_management_interfaces.action import LiftControl
 
 class LiftControllerServer(Node):
@@ -25,6 +30,10 @@ class LiftControllerServer(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self._cb_group
         )
+
+        self.current_state: IRobotLiftStateState = None
+        self.current_floor = 0
+        self.desired_floor = 0
 
         self.protocol.connect()
         if not self.protocol.wait_until_connected(timeout=5.0):
@@ -54,11 +63,6 @@ class LiftControllerServer(Node):
             result.message = "Websocket API disconnected"
             return result
 
-        request_payload = {
-            "lift_id": goal_handle.request.lift_id,
-            "target_floor": goal_handle.request.target_floor,
-        }
-
         try:
             self.protocol.send_message(request_payload)
         except Exception as exc:
@@ -72,6 +76,13 @@ class LiftControllerServer(Node):
         result.success = True
         result.message = "Goal forwarded to websocket API"
         return result
+    
+    def transition_to_state(self, new_state):
+        if self.current_state is not None:
+            self.current_state.on_exit()
+
+        self.current_state = new_state
+        self.current_state.on_enter()
 
    
 def main(args=None):
