@@ -3,7 +3,15 @@ from abc import ABC, abstractmethod
 class ICommunicationProtocol(ABC):
 
     @abstractmethod
-    def connect(self, address: str):
+    def connect(self):
+        pass
+
+    @abstractmethod
+    def wait_until_connected(self, timeout=None):
+        pass
+
+    @abstractmethod
+    def is_connected(self):
         pass
 
     @abstractmethod
