@@ -1,11 +1,12 @@
-from .IRobotLiftState import IRobotLiftStateState
+from .IRobotLiftState import IRobotLiftState
+from ..Communication.Requests.RequestLiftRequest import RequestLiftRequest
 
-class WaitingForElevatorState(IRobotLiftStateState):
+
+class WaitingForElevatorState(IRobotLiftState):
     def on_enter(self):
-        return super().on_enter()
-    
+        request = RequestLiftRequest(lift_id=self.context._lift_id)
+        self.context.protocol.send_message(request.__dict__)
+        self.context.get_logger().info(f"Requested elevator {self.context._lift_id}")
+
     def on_exit(self):
-        return super().on_exit()
-    
-    def update(self):
-        return super().update()
+        self.context.get_logger().info("Elevator arrived, proceeding")

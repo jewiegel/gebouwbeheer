@@ -1,11 +1,13 @@
-from .IRobotLiftState import IRobotLiftStateState
+from .IRobotLiftState import IRobotLiftState
 
-class DrivingInElevatorState(IRobotLiftStateState):
+
+class DrivingInElevatorState(IRobotLiftState):
     def on_enter(self):
-        return super().on_enter()
-    
+        self.context.get_logger().info(
+            f"Elevator driving to floor {self.context._target_floor}"
+        )
+
     def on_exit(self):
-        return super().on_exit()
-    
-    def update(self):
-        return super().update()
+        self.context.get_logger().info(
+            f"Arrived at floor {self.context._target_floor}"
+        )

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class IRobotLiftStateState(ABC):
+class IRobotLiftState(ABC):
     def __init__(self, context):
         self.context = context
 

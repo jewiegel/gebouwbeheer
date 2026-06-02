@@ -1,11 +1,9 @@
-from .IRobotLiftState import IRobotLiftStateState
+from .IRobotLiftState import IRobotLiftState
 
-class WaitingForDoorsState(IRobotLiftStateState):
+
+class WaitingForDoorsState(IRobotLiftState):
     def on_enter(self):
-        return super().on_enter()
-    
+        self.context.get_logger().info("Waiting for elevator doors to open")
+
     def on_exit(self):
-        return super().on_exit()
-    
-    def update(self):
-        return super().update()
+        self.context.get_logger().info("Doors are open, entering elevator")
