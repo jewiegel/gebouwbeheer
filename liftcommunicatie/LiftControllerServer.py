@@ -1,9 +1,11 @@
 import asyncio
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer, CancelResponse, GoalResponse
+from rclpy.action import ActionServer, CancelResponse, GoalResponse, ActionClient
 from rclpy.action.server import ServerGoalHandle
 from rclpy.callback_groups import ReentrantCallbackGroup
+
+from nav2_msgs.action import NavigateToPose
 
 from .Communication.Protocols.ICommunicationProtocol import ICommunicationProtocol
 from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
@@ -32,6 +34,8 @@ class LiftControllerServer(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self._cb_group
         )
+        
+        self._action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
         self.current_state: IRobotLiftState = None
         self._lift_id = None
