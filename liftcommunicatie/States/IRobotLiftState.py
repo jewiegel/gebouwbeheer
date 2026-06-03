@@ -13,5 +13,5 @@ class IRobotLiftState(ABC):
     def on_exit(self):
         pass
 
-    async def execute(self):
+    def execute(self):
         pass

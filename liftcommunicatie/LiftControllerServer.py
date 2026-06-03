@@ -1,9 +1,10 @@
-import asyncio
+import threading
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionServer, CancelResponse, GoalResponse, ActionClient
 from rclpy.action.server import ServerGoalHandle
 from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.executors import MultiThreadedExecutor
 
 from nav2_msgs.action import NavigateToPose
 
@@ -37,9 +38,8 @@ class LiftControllerServer(Node):
         self._lift_id = None
         self._target_floor = None
         self._goal_handle: ServerGoalHandle = None
-        self._elevator_arrived: asyncio.Event = None
-        self._machine_done: asyncio.Event = None
-        self._loop = None
+        self._elevator_arrived: threading.Event = None
+        self._machine_done: threading.Event = None
 
         self.protocol.set_message_callback(self._on_lift_message)
         self.protocol.connect()
@@ -52,6 +52,7 @@ class LiftControllerServer(Node):
         self.current_state = new_state
         if new_state is not None:
             new_state.on_enter()
+            new_state.execute()
 
     def publish_feedback(self, status: str):
         feedback = LiftControl.Feedback()
@@ -60,8 +61,8 @@ class LiftControllerServer(Node):
 
     def _on_lift_message(self, message: dict):
         msg_type = message.get('type')
-        if msg_type == 'elevator_arrived' and self._loop is not None and self._elevator_arrived is not None:
-            self._loop.call_soon_threadsafe(self._elevator_arrived.set)
+        if msg_type == 'elevator arrived' and self._elevator_arrived is not None:
+            self._elevator_arrived.set()
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info("Cancel request received")
@@ -77,8 +78,7 @@ class LiftControllerServer(Node):
         )
         return GoalResponse.ACCEPT
 
-    async def execute_callback(self, goal_handle: ServerGoalHandle):
-        self.get_logger().info("Executing lift control goal")
+    def execute_callback(self, goal_handle: ServerGoalHandle):
         result = LiftControl.Result()
 
         if not self.protocol.is_connected():
@@ -87,16 +87,15 @@ class LiftControllerServer(Node):
             result.message = "Elevator API disconnected"
             return result
 
+        self._goal_handle = goal_handle
         self._lift_id = goal_handle.request.lift_id
         self._target_floor = goal_handle.request.target_floor
-        self._goal_handle = goal_handle
-        self._loop = asyncio.get_running_loop()
-        self._elevator_arrived = asyncio.Event()
-        self._machine_done = asyncio.Event()
+        self._elevator_arrived = threading.Event()
+        self._machine_done = threading.Event()
 
         try:
             self.transition_to_state(WaitingForElevatorState(self))
-            await self._machine_done.wait()
+            self._machine_done.wait()
         except Exception as exc:
             self.get_logger().error(f"Error during lift execution: {exc}")
             goal_handle.abort()
@@ -112,7 +111,9 @@ class LiftControllerServer(Node):
 
 def main(args=None):
     rclpy.init(args=args)
+    executor = MultiThreadedExecutor()
     lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://localhost:8765"))
-    rclpy.spin(lift_controller_node)
+    executor.add_node(lift_controller_node)
+    executor.spin()
     lift_controller_node.destroy_node()
     rclpy.shutdown()

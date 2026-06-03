@@ -11,8 +11,8 @@ class WaitingForElevatorState(IRobotLiftState):
         self.context.protocol.send_message(request.__dict__)
         self.context.get_logger().info(f"Requested elevator {self.context._lift_id}")
 
-    async def execute(self):
-        await self.context._elevator_arrived.wait()
+    def execute(self):
+        self.context._elevator_arrived.wait()
         self.context.transition_to_state(WaitingForDoorsState(self.context))
 
     def on_exit(self):
