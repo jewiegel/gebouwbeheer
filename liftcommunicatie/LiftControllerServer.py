@@ -10,11 +10,10 @@ from nav2_msgs.action import NavigateToPose
 
 from .Communication.Protocols.ICommunicationProtocol import ICommunicationProtocol
 from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
-from .States.IRobotLiftState import IRobotLiftState
-from .States.WaitingForElevatorState import WaitingForElevatorState
-
 from .Communication.Transformers.IResponseTransformer import IResponseTransformer
 from .Communication.Transformers.TestLiftProtocolTransformer import TestLiftProtocolTransformer
+from .States.IRobotLiftState import IRobotLiftState
+from .States.WaitingForElevatorState import WaitingForElevatorState
 
 from building_management_interfaces.action import LiftControl
 
@@ -23,6 +22,7 @@ class LiftControllerServer(Node):
     def __init__(self, protocol: ICommunicationProtocol, transformer: IResponseTransformer):
         super().__init__('lift_controller_node')
         self.protocol = protocol
+        self.transformer = transformer
         self._cb_group = ReentrantCallbackGroup()
 
         self._action_server = ActionServer(
@@ -41,8 +41,8 @@ class LiftControllerServer(Node):
         self._lift_id = None
         self._target_floor = None
         self._goal_handle: ServerGoalHandle = None
-        self._elevator_arrived: threading.Event = None
         self._machine_done: threading.Event = None
+        self._response_events: dict = {}
 
         self.protocol.set_message_callback(self._on_lift_message)
         self.protocol.connect()
@@ -62,10 +62,21 @@ class LiftControllerServer(Node):
         feedback.status = status
         self._goal_handle.publish_feedback(feedback)
 
+    def prepare_for_response(self, response_type):
+        self._response_events[response_type] = threading.Event()
+
+    def wait_for_response(self, response_type):
+        event = self._response_events.pop(response_type, None)
+        if event is not None:
+            event.wait()
+
     def _on_lift_message(self, message: dict):
-        msg_type = message.get('type')
-        if msg_type == 'elevator arrived' and self._elevator_arrived is not None:
-            self._elevator_arrived.set()
+        response = self.transformer.to_response(message)
+        if response is None:
+            return
+        event = self._response_events.get(type(response))
+        if event is not None:
+            event.set()
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info("Cancel request received")
@@ -93,7 +104,6 @@ class LiftControllerServer(Node):
         self._goal_handle = goal_handle
         self._lift_id = goal_handle.request.lift_id
         self._target_floor = goal_handle.request.target_floor
-        self._elevator_arrived = threading.Event()
         self._machine_done = threading.Event()
 
         try:

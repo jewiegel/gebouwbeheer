@@ -1,13 +1,14 @@
 from .IResponseTransformer import IResponseTransformer
-from ..Responses import DoorsStatusResponse, FloorStatusResponse
+from ..Responses import DoorsStatusResponse, FloorStatusResponse, ElevatorArrivedResponse
 from ..Requests import RequestLiftRequest, ChooseFloorRequest, LiftStatusRequest
 
 
 class TestLiftProtocolTransformer(IResponseTransformer):
 
     _RESPONSE_MAP = {
-        'doors status': (DoorsStatusResponse, ['status']),
-        'floor status': (FloorStatusResponse, ['floor']),
+        'doors status':    (DoorsStatusResponse,    ['status']),
+        'floor status':    (FloorStatusResponse,    ['floor']),
+        'elevator arrived': (ElevatorArrivedResponse, []),
     }
 
     _REQUEST_MAP = {

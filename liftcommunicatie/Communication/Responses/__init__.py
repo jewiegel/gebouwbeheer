@@ -1,2 +1,3 @@
 from .DoorsStatusResponse import DoorsStatusResponse
 from .FloorStatusResponse import FloorStatusResponse
+from .ElevatorArrivedResponse import ElevatorArrivedResponse
