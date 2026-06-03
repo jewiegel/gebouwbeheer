@@ -13,11 +13,14 @@ from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
 from .States.IRobotLiftState import IRobotLiftState
 from .States.WaitingForElevatorState import WaitingForElevatorState
 
+from .Communication.Transformers.IResponseTransformer import IResponseTransformer
+from .Communication.Transformers.TestLiftProtocolTransformer import TestLiftProtocolTransformer
+
 from building_management_interfaces.action import LiftControl
 
 
 class LiftControllerServer(Node):
-    def __init__(self, protocol: ICommunicationProtocol):
+    def __init__(self, protocol: ICommunicationProtocol, transformer: IResponseTransformer):
         super().__init__('lift_controller_node')
         self.protocol = protocol
         self._cb_group = ReentrantCallbackGroup()
@@ -112,7 +115,7 @@ class LiftControllerServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     executor = MultiThreadedExecutor()
-    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://localhost:8765"))
+    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://localhost:8765"), TestLiftProtocolTransformer())
     executor.add_node(lift_controller_node)
     executor.spin()
     lift_controller_node.destroy_node()
