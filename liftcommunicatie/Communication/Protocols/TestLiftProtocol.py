@@ -6,11 +6,11 @@ import json
 
 class TestLiftProtocol(ICommunicationProtocol):
     def __init__(self, url):
-        self.a = 1
         self.url = url
         self.ws = None
         self.ws_thread = None
         self._connected = threading.Event()
+        self._message_callback = None
 
     
     def connect(self):
@@ -55,8 +55,17 @@ class TestLiftProtocol(ICommunicationProtocol):
         print(f"Connected to WS API: {self.url}")
         self._connected.set()
 
+    def set_message_callback(self, callback):
+        self._message_callback = callback
+
     def _on_message(self, ws, message):
         print(f"bericht ontvangen!: {message}")
+        if self._message_callback is not None:
+            try:
+                data = json.loads(message)
+                self._message_callback(data)
+            except json.JSONDecodeError:
+                pass
 
     def _on_error(self, ws, error):
         self._connected.clear()

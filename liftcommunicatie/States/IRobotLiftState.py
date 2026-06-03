@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 
+
 class IRobotLiftState(ABC):
     def __init__(self, context):
         self.context = context
 
-    
     @abstractmethod
     def on_enter(self):
         pass
@@ -13,5 +13,5 @@ class IRobotLiftState(ABC):
     def on_exit(self):
         pass
 
-    def update(self):
+    async def execute(self):
         pass

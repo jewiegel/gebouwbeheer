@@ -25,3 +25,7 @@ class ICommunicationProtocol(ABC):
     @abstractmethod
     def send_message(self, message):
         pass
+
+    @abstractmethod
+    def set_message_callback(self, callback):
+        pass

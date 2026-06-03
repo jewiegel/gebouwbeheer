@@ -1,9 +1,12 @@
+import asyncio
 from .IRobotLiftState import IRobotLiftState
+from .DrivingInElevatorState import DrivingInElevatorState
 from ..Communication.Requests.ChooseFloorRequest import ChooseFloorRequest
 
 
 class InElevatorState(IRobotLiftState):
     def on_enter(self):
+        self.context.publish_feedback("Inside elevator, selecting floor")
         request = ChooseFloorRequest(
             lift_id=self.context._lift_id,
             target_floor=self.context._target_floor
@@ -12,6 +15,11 @@ class InElevatorState(IRobotLiftState):
         self.context.get_logger().info(
             f"Inside elevator, selected floor {self.context._target_floor}"
         )
+
+    async def execute(self):
+        # TODO: replace with actual floor-selected confirmation from lift API
+        await asyncio.sleep(1.0)
+        self.context.transition_to_state(DrivingInElevatorState(self.context))
 
     def on_exit(self):
         self.context.get_logger().info("Elevator doors closing")

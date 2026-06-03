@@ -11,10 +11,6 @@ from .Communication.Protocols.ICommunicationProtocol import ICommunicationProtoc
 from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
 from .States.IRobotLiftState import IRobotLiftState
 from .States.WaitingForElevatorState import WaitingForElevatorState
-from .States.WaitingForDoorsState import WaitingForDoorsState
-from .States.InElevatorState import InElevatorState
-from .States.DrivingInElevatorState import DrivingInElevatorState
-from .States.ExitingElevatorState import ExitingElevatorState
 
 from building_management_interfaces.action import LiftControl
 
@@ -34,13 +30,18 @@ class LiftControllerServer(Node):
             cancel_callback=self.cancel_callback,
             callback_group=self._cb_group
         )
-        
+
         self._action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
         self.current_state: IRobotLiftState = None
         self._lift_id = None
         self._target_floor = None
+        self._goal_handle: ServerGoalHandle = None
+        self._elevator_arrived: asyncio.Event = None
+        self._machine_done: asyncio.Event = None
+        self._loop = None
 
+        self.protocol.set_message_callback(self._on_lift_message)
         self.protocol.connect()
         if not self.protocol.wait_until_connected(timeout=5.0):
             raise RuntimeError("Could not connect to the elevator API before starting the action server")
@@ -49,7 +50,18 @@ class LiftControllerServer(Node):
         if self.current_state is not None:
             self.current_state.on_exit()
         self.current_state = new_state
-        self.current_state.on_enter()
+        if new_state is not None:
+            new_state.on_enter()
+
+    def publish_feedback(self, status: str):
+        feedback = LiftControl.Feedback()
+        feedback.status = status
+        self._goal_handle.publish_feedback(feedback)
+
+    def _on_lift_message(self, message: dict):
+        msg_type = message.get('type')
+        if msg_type == 'elevator_arrived' and self._loop is not None and self._elevator_arrived is not None:
+            self._loop.call_soon_threadsafe(self._elevator_arrived.set)
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info("Cancel request received")
@@ -77,38 +89,14 @@ class LiftControllerServer(Node):
 
         self._lift_id = goal_handle.request.lift_id
         self._target_floor = goal_handle.request.target_floor
-
-        feedback = LiftControl.Feedback()
+        self._goal_handle = goal_handle
+        self._loop = asyncio.get_running_loop()
+        self._elevator_arrived = asyncio.Event()
+        self._machine_done = asyncio.Event()
 
         try:
             self.transition_to_state(WaitingForElevatorState(self))
-            feedback.status = "Waiting for elevator"
-            goal_handle.publish_feedback(feedback)
-            await asyncio.sleep(2.0)
-
-            self.transition_to_state(WaitingForDoorsState(self))
-            feedback.status = "Waiting for doors to open"
-            goal_handle.publish_feedback(feedback)
-            await asyncio.sleep(1.0)
-
-            self.transition_to_state(InElevatorState(self))
-            feedback.status = "Inside elevator, selecting floor"
-            goal_handle.publish_feedback(feedback)
-            await asyncio.sleep(1.0)
-
-            self.transition_to_state(DrivingInElevatorState(self))
-            feedback.status = "Driving to target floor"
-            goal_handle.publish_feedback(feedback)
-            await asyncio.sleep(3.0)
-
-            self.transition_to_state(ExitingElevatorState(self))
-            feedback.status = "Exiting elevator"
-            goal_handle.publish_feedback(feedback)
-            await asyncio.sleep(1.0)
-
-            self.current_state.on_exit()
-            self.current_state = None
-
+            await self._machine_done.wait()
         except Exception as exc:
             self.get_logger().error(f"Error during lift execution: {exc}")
             goal_handle.abort()
