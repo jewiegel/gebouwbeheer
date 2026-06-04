@@ -10,15 +10,15 @@ class LiftActionClient(Node):
         super().__init__('lift_action_client')
         self._client = ActionClient(self, LiftControl, 'lift_control')
 
-    def send_goal(self, lift_id: str, target_floor: int):
+    def send_goal(self, target_floor: int, current_floor: int):
         self.get_logger().info('Wachten op server...')
         self._client.wait_for_server()
 
         goal = LiftControl.Goal()
-        goal.lift_id = lift_id
         goal.target_floor = target_floor
+        goal.current_floor = current_floor
 
-        self.get_logger().info(f'Goal versturen: lift={lift_id} verdieping={target_floor}')
+        self.get_logger().info(f'Goal versturen: huidig={current_floor} doel={target_floor}')
         future = self._client.send_goal_async(
             goal,
             feedback_callback=self.feedback_callback
@@ -36,7 +36,7 @@ class LiftActionClient(Node):
 
     def feedback_callback(self, feedback_msg):
         fb = feedback_msg.feedback
-        self.get_logger().info(f'Feedback: status={fb.status} | verdieping={fb.current_floor}')
+        self.get_logger().info(f'Feedback: status={fb.status} | verdieping={fb.new_floor}')
 
     def result_callback(self, future):
         result = future.result().result
@@ -47,5 +47,5 @@ class LiftActionClient(Node):
 def main(args=None):
     rclpy.init(args=args)
     client = LiftActionClient()
-    client.send_goal(lift_id='lift_A', target_floor=3)
+    client.send_goal(target_floor=3, current_floor=1)
     rclpy.spin(client)

@@ -1,4 +1,4 @@
 from .IRequest import IRequest
 class RequestLiftRequest(IRequest):
-    def __init__(self, lift_id: int):
-        self.lift_id = lift_id
+    def __init__(self, current_floor: int):
+        self.current_floor = current_floor

@@ -5,29 +5,37 @@ from ..Requests import RequestLiftRequest, ChooseFloorRequest, LiftStatusRequest
 
 class TestLiftProtocolTransformer(IResponseTransformer):
 
-    _RESPONSE_MAP = {
-        'doors status':    (DoorsStatusResponse,    ['status']),
-        'floor status':    (FloorStatusResponse,    ['floor']),
-        'elevator arrived': (ElevatorArrivedResponse, []),
-    }
-
-    _REQUEST_MAP = {
-        RequestLiftRequest: 'request lift',
-        ChooseFloorRequest: 'choose floor',
-        LiftStatusRequest:  'lift status',
-    }
 
     def to_response(self, message: dict):
+        msg_type = message.get('event')
+
+        if msg_type == 'doors status':
+            return DoorsStatusResponse(status=message['status'])
+        elif msg_type == 'floor status':
+            return FloorStatusResponse(floor=message['floor'])
+        elif msg_type == 'liftArrived':
+            return ElevatorArrivedResponse(floor=message['floor'])
+
+        return None
+
+    def to_request(self, message: dict):
         msg_type = message.get('type')
-        entry = self._RESPONSE_MAP.get(msg_type)
-        if entry is None:
-            return None
-        cls, fields = entry
-        kwargs = {field: message[field] for field in fields}
-        return cls(**kwargs)
+
+        if msg_type == 'request lift':
+            return RequestLiftRequest(current_floor=message['current_floor'])
+        elif msg_type == 'choose floor':
+            return ChooseFloorRequest(lift_id=message['lift_id'], target_floor=message['target_floor'])
+        elif msg_type == 'lift status':
+            return LiftStatusRequest(lift_id=message['lift_id'])
+
+        return None
 
     def from_request(self, request):
-        msg_type = self._REQUEST_MAP.get(type(request))
-        if msg_type is None:
-            raise ValueError(f"Unknown request type: {type(request).__name__}")
-        return {'type': msg_type, **request.__dict__}
+        if isinstance(request, RequestLiftRequest):
+            return {'command': 'api/v1/lift/RequestLiftCommand', 'floor': request.current_floor}
+        elif isinstance(request, ChooseFloorRequest):
+            return {'command': 'choose floor', 'lift_id': request.lift_id, 'target_floor': request.target_floor}
+        elif isinstance(request, LiftStatusRequest):
+            return {'command': 'lift status', 'lift_id': request.lift_id}
+
+        raise ValueError(f"Unknown request type: {type(request).__name__}")

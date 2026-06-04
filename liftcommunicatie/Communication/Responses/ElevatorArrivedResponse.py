@@ -2,4 +2,5 @@ from .IResponse import IResponse
 
 
 class ElevatorArrivedResponse(IResponse):
-    pass
+    def __init__(self, floor: int):
+        self.floor = floor

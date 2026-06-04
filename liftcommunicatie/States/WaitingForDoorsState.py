@@ -5,7 +5,7 @@ from .InElevatorState import InElevatorState
 
 class WaitingForDoorsState(IRobotLiftState):
     def on_enter(self):
-        self.context.publish_feedback("Waiting for doors to open")
+        self.context.publish_feedback("Waiting for doors to open", new_floor=self.context._target_floor)
         self.context.get_logger().info("Waiting for elevator doors to open")
 
     def execute(self):

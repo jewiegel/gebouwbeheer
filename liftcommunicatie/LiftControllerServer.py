@@ -43,6 +43,7 @@ class LiftControllerServer(Node):
         self._goal_handle: ServerGoalHandle = None
         self._machine_done: threading.Event = None
         self._response_events: dict = {}
+        self._response_callbacks: dict = {}
 
         self.protocol.set_message_callback(self._on_lift_message)
         self.protocol.connect()
@@ -57,15 +58,19 @@ class LiftControllerServer(Node):
             new_state.on_enter()
             new_state.execute()
 
-    def publish_feedback(self, status: str):
+    def publish_feedback(self, status: str, new_floor: int = 0):
         feedback = LiftControl.Feedback()
         feedback.status = status
+        feedback.new_floor = new_floor
         self._goal_handle.publish_feedback(feedback)
 
     def prepare_for_response(self, response_type):
         self._response_events[response_type] = threading.Event()
 
-    def wait_for_response(self, response_type):
+    def wait_for_response(self, response_type, callback=None):
+        if callback is not None:
+            self._response_callbacks[response_type] = callback
+            return
         event = self._response_events.pop(response_type, None)
         if event is not None:
             event.wait()
@@ -74,9 +79,12 @@ class LiftControllerServer(Node):
         response = self.transformer.to_response(message)
         if response is None:
             return
-        event = self._response_events.get(type(response))
+        event = self._response_events.pop(type(response), None)
         if event is not None:
             event.set()
+        cb = self._response_callbacks.pop(type(response), None)
+        if cb is not None:
+            cb(response)
 
     def cancel_callback(self, goal_handle):
         self.get_logger().info("Cancel request received")
@@ -88,7 +96,7 @@ class LiftControllerServer(Node):
             return GoalResponse.REJECT
 
         self.get_logger().info(
-            f"Goal received: lift_id={goal_request.lift_id}, target_floor={goal_request.target_floor}"
+            f"Goal received: current_floor={goal_request.current_floor}, target_floor={goal_request.target_floor}"
         )
         return GoalResponse.ACCEPT
 
@@ -102,7 +110,7 @@ class LiftControllerServer(Node):
             return result
 
         self._goal_handle = goal_handle
-        self._lift_id = goal_handle.request.lift_id
+        self._current_floor = goal_handle.request.current_floor
         self._target_floor = goal_handle.request.target_floor
         self._machine_done = threading.Event()
 
@@ -125,7 +133,7 @@ class LiftControllerServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     executor = MultiThreadedExecutor()
-    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://localhost:8765"), TestLiftProtocolTransformer())
+    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://10.103.103.110:80/ws"), TestLiftProtocolTransformer())
     executor.add_node(lift_controller_node)
     executor.spin()
     lift_controller_node.destroy_node()
