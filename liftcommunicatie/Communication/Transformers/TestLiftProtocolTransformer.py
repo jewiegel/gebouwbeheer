@@ -11,7 +11,7 @@ class TestLiftProtocolTransformer(IResponseTransformer):
 
         if msg_type == 'doors status':
             return DoorsStatusResponse(status=message['status'])
-        elif msg_type == 'floor status':
+        elif msg_type == 'floorReached':
             return FloorStatusResponse(floor=message['floor'])
         elif msg_type == 'liftArrived':
             return ElevatorArrivedResponse(floor=message['floor'])
@@ -34,7 +34,7 @@ class TestLiftProtocolTransformer(IResponseTransformer):
         if isinstance(request, RequestLiftRequest):
             return {'command': 'api/v1/lift/RequestLiftCommand', 'floor': request.current_floor}
         elif isinstance(request, ChooseFloorRequest):
-            return {'command': 'choose floor', 'lift_id': request.lift_id, 'target_floor': request.target_floor}
+            return {'command': 'api/v1/lift/ChooseLiftFloorCommand', 'floor': request.target_floor}
         elif isinstance(request, LiftStatusRequest):
             return {'command': 'lift status', 'lift_id': request.lift_id}
 

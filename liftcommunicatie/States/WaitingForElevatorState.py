@@ -1,5 +1,6 @@
 from .IRobotLiftState import IRobotLiftState
 from .WaitingForDoorsState import WaitingForDoorsState
+from .InElevatorState import InElevatorState
 from ..Communication.Requests.RequestLiftRequest import RequestLiftRequest
 from ..Communication.Responses.ElevatorArrivedResponse import ElevatorArrivedResponse
 
@@ -21,7 +22,7 @@ class WaitingForElevatorState(IRobotLiftState):
                 f"Wrong elevator floor: got {response.floor}, expected {self.context._current_floor}"
             )
             return
-        self.context.transition_to_state(WaitingForDoorsState(self.context))
+        self.context.transition_to_state(WaitingForDoorsState(self.context, InElevatorState(self.context)))
 
     def on_exit(self):
         self.context.get_logger().info("Elevator arrived, proceeding")

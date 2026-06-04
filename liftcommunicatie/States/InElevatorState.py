@@ -1,17 +1,14 @@
 import time
-from .WaitingForDoorsState import WaitingForDoorsState
 from .IRobotLiftState import IRobotLiftState
 from .DrivingInElevatorState import DrivingInElevatorState
 from ..Communication.Requests.ChooseFloorRequest import ChooseFloorRequest
-from ..Communication.Responses.ElevatorArrivedResponse import ElevatorArrivedResponse
+from ..Communication.Responses.FloorStatusResponse import FloorStatusResponse
 
 
 class InElevatorState(IRobotLiftState):
     def on_enter(self):
-        self.context.publish_feedback("Inside elevator, selecting floor", new_floor=self.context._current_floor)
-        request = ChooseFloorRequest(
-            target_floor=self.context._target_floor
-        )
+        self.context.publish_feedback("Inside elevator, selecting floor", new_floor=self.context._target_floor)
+        request = ChooseFloorRequest(self.context._target_floor)
         
         translated_request = self.context.transformer.from_request(request)
         self.context.protocol.send_message(translated_request)
@@ -20,19 +17,18 @@ class InElevatorState(IRobotLiftState):
         )
 
     def execute(self):
-        self._arrived_correctly = False
-        while not self._arrived_correctly:
-            self.context.wait_for_response(ElevatorArrivedResponse, callback=self._on_elevator_arrived)
+        self.context.wait_for_response(FloorStatusResponse, callback=self._on_elevator_arrived)
 
-    def _on_elevator_arrived(self, response: ElevatorArrivedResponse):
+    def _on_elevator_arrived(self, response: FloorStatusResponse):
         if response.floor != self.context._target_floor:
             self.context.get_logger().warning(
                 f"Wrong elevator floor: got {response.floor}, expected: {self.context._target_floor}"
             )
-            self._arrived_correctly = False
+            self.context.wait_for_response(FloorStatusResponse, callback=self._on_elevator_arrived)
         else:
-            self._arrived_correctly = True
-            self.context.transition_to_state(WaitingForDoorsState(self.context))
+            from .WaitingForDoorsState import WaitingForDoorsState
+            from .ExitingElevatorState import ExitingElevatorState
+            self.context.transition_to_state(WaitingForDoorsState(self.context, ExitingElevatorState(self.context)))
         
 
     def on_exit(self):
