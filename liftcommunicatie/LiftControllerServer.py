@@ -6,7 +6,7 @@ from rclpy.action.server import ServerGoalHandle
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 
-from nav2_msgs.action import NavigateToPose
+from nav2_msgs.action import NavigateToPose, DriveOnHeading, BackUp
 
 from .Communication.Protocols.ICommunicationProtocol import ICommunicationProtocol
 from .Communication.Protocols.TestLiftProtocol import TestLiftProtocol
@@ -35,7 +35,9 @@ class LiftControllerServer(Node):
             callback_group=self._cb_group
         )
 
-        self._action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self._action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose', callback_group=self._cb_group)
+        self._drive_on_heading_client = ActionClient(self, DriveOnHeading, 'drive_on_heading', callback_group=self._cb_group)
+        self._backup_client = ActionClient(self, BackUp, 'backup', callback_group=self._cb_group)
 
         self.current_state: IRobotLiftState = None
         self._lift_id = None
