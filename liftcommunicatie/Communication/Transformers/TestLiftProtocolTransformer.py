@@ -24,7 +24,7 @@ class TestLiftProtocolTransformer(IResponseTransformer):
         if msg_type == 'request lift':
             return RequestLiftRequest(current_floor=message['current_floor'])
         elif msg_type == 'choose floor':
-            return ChooseFloorRequest(lift_id=message['lift_id'], target_floor=message['target_floor'])
+            return ChooseFloorRequest(target_floor=message['target_floor'])
         elif msg_type == 'lift status':
             return LiftStatusRequest(lift_id=message['lift_id'])
 

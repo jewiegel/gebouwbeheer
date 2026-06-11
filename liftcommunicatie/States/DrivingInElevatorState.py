@@ -2,7 +2,10 @@ import threading
 from nav2_msgs.action import DriveOnHeading
 from action_msgs.msg import GoalStatus
 from .IRobotLiftState import IRobotLiftState
-from .ExitingElevatorState import ExitingElevatorState
+from .InElevatorState import InElevatorState
+from ..Exceptions import GoalCancelledError
+
+NAV_TIMEOUT = 60.0
 
 
 class DrivingInElevatorState(IRobotLiftState):
@@ -11,6 +14,7 @@ class DrivingInElevatorState(IRobotLiftState):
         self.context.get_logger().info("Driving 1 meter forward into elevator")
         self._nav_done = threading.Event()
         self._nav_succeeded = False
+        self._nav_goal_handle = None
 
     def execute(self):
         goal = DriveOnHeading.Goal()
@@ -18,14 +22,22 @@ class DrivingInElevatorState(IRobotLiftState):
         goal.speed = 0.2
         goal.time_allowance.sec = 30
 
-        self.context._drive_on_heading_client.wait_for_server()
+        if not self.context._drive_on_heading_client.wait_for_server(timeout_sec=5.0):
+            raise RuntimeError("drive_on_heading action server not available")
         future = self.context._drive_on_heading_client.send_goal_async(goal)
         future.add_done_callback(self._goal_response_callback)
-        self._nav_done.wait()
 
+        try:
+            finished = self.context.wait_for_event(self._nav_done, timeout=NAV_TIMEOUT)
+        except GoalCancelledError:
+            if self._nav_goal_handle is not None:
+                self._nav_goal_handle.cancel_goal_async()
+            raise
+        if not finished:
+            raise RuntimeError("DriveOnHeading timed out")
         if not self._nav_succeeded:
             raise RuntimeError("DriveOnHeading failed: could not drive 1 meter forward")
-        self.context.transition_to_state(ExitingElevatorState(self.context))
+        return InElevatorState(self.context)
 
     def _goal_response_callback(self, future):
         goal_handle = future.result()
@@ -33,6 +45,7 @@ class DrivingInElevatorState(IRobotLiftState):
             self.context.get_logger().error("DriveOnHeading goal rejected")
             self._nav_done.set()
             return
+        self._nav_goal_handle = goal_handle
         goal_handle.get_result_async().add_done_callback(self._result_callback)
 
     def _result_callback(self, future):

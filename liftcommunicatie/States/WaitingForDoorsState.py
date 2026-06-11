@@ -1,5 +1,7 @@
-import time
+import threading
 from .IRobotLiftState import IRobotLiftState
+
+DOOR_OPEN_DELAY = 1.0
 
 
 class WaitingForDoorsState(IRobotLiftState):
@@ -12,9 +14,10 @@ class WaitingForDoorsState(IRobotLiftState):
         self.context.get_logger().info("Waiting for elevator doors to open")
 
     def execute(self):
-        # TODO: replace with threading.Event wait for door-open signal from lift API
-        time.sleep(1.0)
-        self.context.transition_to_state(self._next_state)
+        # TODO: wait for a DoorsStatusResponse from the lift API instead of a fixed delay.
+        # The never-set event makes this a cancellable sleep.
+        self.context.wait_for_event(threading.Event(), timeout=DOOR_OPEN_DELAY)
+        return self._next_state
 
     def on_exit(self):
-        self.context.get_logger().info("Doors are open, entering elevator")
+        self.context.get_logger().info("Doors are open, proceeding")

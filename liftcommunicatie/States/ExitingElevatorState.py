@@ -2,6 +2,9 @@ import threading
 from nav2_msgs.action import BackUp
 from action_msgs.msg import GoalStatus
 from .IRobotLiftState import IRobotLiftState
+from ..Exceptions import GoalCancelledError
+
+NAV_TIMEOUT = 60.0
 
 
 class ExitingElevatorState(IRobotLiftState):
@@ -10,6 +13,7 @@ class ExitingElevatorState(IRobotLiftState):
         self.context.get_logger().info("Driving 1 meter backward out of elevator")
         self._nav_done = threading.Event()
         self._nav_succeeded = False
+        self._nav_goal_handle = None
 
     def execute(self):
         goal = BackUp.Goal()
@@ -17,15 +21,22 @@ class ExitingElevatorState(IRobotLiftState):
         goal.speed = 0.2
         goal.time_allowance.sec = 30
 
-        self.context._backup_client.wait_for_server()
+        if not self.context._backup_client.wait_for_server(timeout_sec=5.0):
+            raise RuntimeError("backup action server not available")
         future = self.context._backup_client.send_goal_async(goal)
         future.add_done_callback(self._goal_response_callback)
-        self._nav_done.wait()
 
+        try:
+            finished = self.context.wait_for_event(self._nav_done, timeout=NAV_TIMEOUT)
+        except GoalCancelledError:
+            if self._nav_goal_handle is not None:
+                self._nav_goal_handle.cancel_goal_async()
+            raise
+        if not finished:
+            raise RuntimeError("BackUp timed out")
         if not self._nav_succeeded:
             raise RuntimeError("BackUp failed: could not drive 1 meter backward")
-        self.context.transition_to_state(None)
-        self.context._machine_done.set()
+        return None
 
     def _goal_response_callback(self, future):
         goal_handle = future.result()
@@ -33,6 +44,7 @@ class ExitingElevatorState(IRobotLiftState):
             self.context.get_logger().error("BackUp goal rejected")
             self._nav_done.set()
             return
+        self._nav_goal_handle = goal_handle
         goal_handle.get_result_async().add_done_callback(self._result_callback)
 
     def _result_callback(self, future):

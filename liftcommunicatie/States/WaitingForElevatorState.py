@@ -1,29 +1,36 @@
+import time
 from .IRobotLiftState import IRobotLiftState
 from .WaitingForDoorsState import WaitingForDoorsState
-from .InElevatorState import InElevatorState
 from .DrivingInElevatorState import DrivingInElevatorState
 from ..Communication.Requests.RequestLiftRequest import RequestLiftRequest
 from ..Communication.Responses.ElevatorArrivedResponse import ElevatorArrivedResponse
+
+ELEVATOR_ARRIVAL_TIMEOUT = 300.0
 
 
 class WaitingForElevatorState(IRobotLiftState):
     def on_enter(self):
         self.context.publish_feedback("Waiting for elevator")
-        request = RequestLiftRequest(self.context._current_floor)
-        translated_request = self.context.transformer.from_request(request)
-        self.context.protocol.send_message(translated_request)
-        self.context.get_logger().info(f"Requested elevator going to floor: {self.context._current_floor}")
+        self.context.get_logger().info(f"Requesting elevator to floor: {self.context._current_floor}")
 
     def execute(self):
-        self.context.wait_for_response(ElevatorArrivedResponse, callback=self._on_elevator_arrived)
+        # Create the inbox before sending, so a fast response can't slip past us
+        self.context.prepare_for_response(ElevatorArrivedResponse)
+        request = RequestLiftRequest(self.context._current_floor)
+        self.context.protocol.send_message(self.context.transformer.from_request(request))
 
-    def _on_elevator_arrived(self, response: ElevatorArrivedResponse):
-        if response.floor != self.context._current_floor:
+        deadline = time.monotonic() + ELEVATOR_ARRIVAL_TIMEOUT
+        while True:
+            response = self.context.wait_for_response(
+                ElevatorArrivedResponse, timeout=deadline - time.monotonic()
+            )
+            if response is None:
+                raise RuntimeError("Timed out waiting for the elevator to arrive")
+            if response.floor == self.context._current_floor:
+                return WaitingForDoorsState(self.context, DrivingInElevatorState(self.context))
             self.context.get_logger().warning(
                 f"Wrong elevator floor: got {response.floor}, expected {self.context._current_floor}"
             )
-            return
-        self.context.transition_to_state(WaitingForDoorsState(self.context, DrivingInElevatorState(self.context)))
 
     def on_exit(self):
         self.context.get_logger().info("Elevator arrived, proceeding")
