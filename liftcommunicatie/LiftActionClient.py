@@ -47,5 +47,5 @@ class LiftActionClient(Node):
 def main(args=None):
     rclpy.init(args=args)
     client = LiftActionClient()
-    client.send_goal(target_floor=3, current_floor=1)
+    client.send_goal(target_floor=0, current_floor=1)
     rclpy.spin(client)

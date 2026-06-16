@@ -173,7 +173,7 @@ class LiftControllerServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     executor = MultiThreadedExecutor()
-    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://10.103.103.110:80/ws"), TestLiftProtocolTransformer())
+    lift_controller_node = LiftControllerServer(TestLiftProtocol("ws://10.103.103.123:80/ws"), TestLiftProtocolTransformer())
     executor.add_node(lift_controller_node)
     executor.spin()
     lift_controller_node.destroy_node()

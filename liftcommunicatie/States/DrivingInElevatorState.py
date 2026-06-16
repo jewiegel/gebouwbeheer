@@ -18,7 +18,7 @@ class DrivingInElevatorState(IRobotLiftState):
 
     def execute(self):
         goal = DriveOnHeading.Goal()
-        goal.target.x = 1.0
+        goal.target.x = 0.7
         goal.speed = 0.2
         goal.time_allowance.sec = 30
 
