@@ -3,7 +3,7 @@ from .IRobotLiftState import IRobotLiftState
 from .WaitingForDoorsState import WaitingForDoorsState
 from .DrivingInElevatorState import DrivingInElevatorState
 from ..Communication.Requests.RequestLiftRequest import RequestLiftRequest
-from ..Communication.Responses.ElevatorArrivedResponse import ElevatorArrivedResponse
+from ..Communication.Responses.FloorStatusResponse import FloorStatusResponse
 
 ELEVATOR_ARRIVAL_TIMEOUT = 300.0
 
@@ -15,14 +15,14 @@ class WaitingForElevatorState(IRobotLiftState):
 
     def execute(self):
         # Create the inbox before sending, so a fast response can't slip past us
-        self.context.prepare_for_response(ElevatorArrivedResponse)
+        self.context.prepare_for_response(FloorStatusResponse)
         request = RequestLiftRequest(self.context._current_floor)
         self.context.protocol.send_message(self.context.transformer.from_request(request))
 
         deadline = time.monotonic() + ELEVATOR_ARRIVAL_TIMEOUT
         while True:
             response = self.context.wait_for_response(
-                ElevatorArrivedResponse, timeout=deadline - time.monotonic()
+                FloorStatusResponse, timeout=deadline - time.monotonic()
             )
             if response is None:
                 raise RuntimeError("Timed out waiting for the elevator to arrive")

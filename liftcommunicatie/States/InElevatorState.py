@@ -3,6 +3,7 @@ from .IRobotLiftState import IRobotLiftState
 from .WaitingForDoorsState import WaitingForDoorsState
 from .ExitingElevatorState import ExitingElevatorState
 from ..Communication.Requests.ChooseFloorRequest import ChooseFloorRequest
+from ..Communication.Requests.RobotReadyRequest import RobotReadyRequest
 from ..Communication.Responses.FloorStatusResponse import FloorStatusResponse
 
 FLOOR_REACHED_TIMEOUT = 300.0
@@ -16,8 +17,12 @@ class InElevatorState(IRobotLiftState):
     def execute(self):
         # Create the inbox before sending, so a fast response can't slip past us
         self.context.prepare_for_response(FloorStatusResponse)
-        request = ChooseFloorRequest(self.context._target_floor)
-        self.context.protocol.send_message(self.context.transformer.from_request(request))
+        choose_floor = ChooseFloorRequest(self.context._target_floor)
+        self.context.protocol.send_message(self.context.transformer.from_request(choose_floor))
+
+        # Robot is inside the lift: signal ready so the lift may move on
+        self.context.protocol.send_message(self.context.transformer.from_request(RobotReadyRequest()))
+        self.context.get_logger().info("Sent robot ready; lift may move")
 
         deadline = time.monotonic() + FLOOR_REACHED_TIMEOUT
         while True:
